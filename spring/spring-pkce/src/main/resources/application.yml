@@ -1,0 +1,30 @@
+server:
+  port: 6001
+
+logging:
+  level:
+    org.springframework.security: trace
+
+spring:
+  security:
+    oauth2:
+      authorizationserver:
+        client:
+          public-client:
+            registration:
+              client-id: "my-app"
+              client-authentication-methods:
+                - "none"
+              authorization-grant-types:
+                - "authorization_code"
+                - "refresh_token"
+              redirect-uris:
+                - "http://127.0.0.1:6001/oauth2/code" # 授权码接收地址
+              post-logout-redirect-uris:
+                - "http://127.0.0.1:6001/"
+              scopes:
+                - "user_info"
+                - "openid"
+                - "profile"
+                - "client.create"
+            require-authorization-consent: true

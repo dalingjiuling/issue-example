@@ -31,3 +31,4 @@ spring:
               accessTokenTimeToLive: "60m"
               authorizationCodeTimeToLive: "60m"
             require-authorization-consent: true
+            require-proof-key: true

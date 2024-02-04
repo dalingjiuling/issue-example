@@ -27,4 +27,7 @@ spring:
                 - "openid"
                 - "profile"
                 - "client.create"
+            token: # Duration设置参考：https://docs.spring.io/spring-boot/docs/current/reference/htmlsingle/#features.external-config.typesafe-configuration-properties.conversion.durations
+              accessTokenTimeToLive: "60m"
+              authorizationCodeTimeToLive: "60m"
             require-authorization-consent: true

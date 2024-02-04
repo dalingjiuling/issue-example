@@ -1,0 +1,9 @@
+server:
+  port: 6002
+
+spring:
+  converting:
+    durations:
+      millisecond: 5000
+      unitDuration: 50
+      formatDuration: 1h

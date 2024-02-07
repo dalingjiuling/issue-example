@@ -16,6 +16,7 @@
         <module>spring-authorization-server</module>
         <module>spring-pkce</module>
         <module>spring-yaml-duration</module>
+        <module>authentication-stored</module>
     </modules>
 
     <properties>

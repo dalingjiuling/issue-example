@@ -42,10 +42,8 @@ public class SecurityConfig {
             throws Exception {
         http
                 .authorizeHttpRequests((authorize) -> authorize
-                        .requestMatchers("/favicon.ico").permitAll()
                         .anyRequest().authenticated()
                 )
-                .httpBasic(Customizer.withDefaults())
                 .formLogin((formLoginCustomizer) -> formLoginCustomizer
                         .successHandler(new LoginRequestAwareAuthenticationSuccessHandler())
                 )

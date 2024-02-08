@@ -34,7 +34,7 @@ public class LoginRequestAwareAuthenticationSuccessHandler extends SavedRequestA
         if (null != tokenObject) {
             token = tokenObject.toString();
         }
-        String targetUrl = "/?" + CacheSecurityContextRepository.ACCESS_TOKEN + "=" + token;
+        String targetUrl = "/home?" + CacheSecurityContextRepository.ACCESS_TOKEN + "=" + token;
         this.redirectStrategy.sendRedirect(request, response, targetUrl);
     }
 }

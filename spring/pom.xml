@@ -17,6 +17,7 @@
         <module>spring-pkce</module>
         <module>spring-yaml-duration</module>
         <module>authentication-stored</module>
+        <module>protocol-endpoints-demo</module>
     </modules>
 
     <properties>

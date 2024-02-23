@@ -1,0 +1,6 @@
+server:
+  port: 6004
+
+logging:
+  level:
+    org.springframework.security: trace

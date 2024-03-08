@@ -1,16 +1,28 @@
 package org.issue.example.spring.endpoint.utils;
 
+import com.alibaba.fastjson2.JSON;
+import com.alibaba.fastjson2.JSONObject;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
-import com.nimbusds.jose.util.Base64;
+import org.apache.commons.codec.binary.Base64;
 import org.springframework.security.oauth2.core.ClientAuthenticationMethod;
 import org.springframework.security.oauth2.core.oidc.OidcScopes;
+import org.springframework.security.oauth2.jose.jws.SignatureAlgorithm;
+import org.springframework.security.oauth2.jwt.*;
 import org.springframework.security.oauth2.server.authorization.oidc.OidcClientRegistration;
 
+import java.math.BigInteger;
 import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
+import java.security.*;
+import java.security.interfaces.RSAPrivateKey;
+import java.security.spec.InvalidKeySpecException;
+import java.security.spec.RSAPrivateKeySpec;
 import java.time.Instant;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Map;
 
 import static java.time.temporal.ChronoUnit.DAYS;
 
@@ -64,7 +76,7 @@ public class EndpointUtil {
         stringBuilder.append("fetch(\"http://127.0.0.1:6004/oauth2/token\", {");
         stringBuilder.append("\"headers\": {");
         stringBuilder.append("\"content-type\": \"application/x-www-form-urlencoded; charset=UTF-8\",");
-        stringBuilder.append("\"Authorization\": \"Basic " + Base64.encode("oidc-client:secret") + "\"");
+        stringBuilder.append("\"Authorization\": \"Basic " + Base64.encodeBase64URLSafeString("oidc-client:secret".getBytes(StandardCharsets.UTF_8)) + "\"");
         stringBuilder.append("},");
         stringBuilder.append("\"method\": \"POST\",");
         stringBuilder.append("\"body\":\"");
@@ -80,6 +92,72 @@ public class EndpointUtil {
         stringBuilder.append(URLEncoder.encode("http://127.0.0.1:6004/login/oauth2/code/oidc-client", StandardCharsets.UTF_8));
 
         stringBuilder.append("\"");
+        stringBuilder.append("}).then(res=>res.json()).then(json=>console.log(json));");
+        return stringBuilder.toString();
+    }
+
+    public static String getAccessTokenUrl(String client_id, String code,String client_secret,ClientAuthenticationMethod method) {
+        StringBuilder stringBuilder = new StringBuilder();
+        if(ClientAuthenticationMethod.CLIENT_SECRET_POST.equals(method)){
+
+            stringBuilder.append("fetch(\"http://127.0.0.1:6004/oauth2/token\", {");
+            stringBuilder.append("\"headers\": {");
+            stringBuilder.append("\"content-type\": \"application/x-www-form-urlencoded; charset=UTF-8\",");
+            stringBuilder.append("},");
+            stringBuilder.append("\"method\": \"POST\",");
+            stringBuilder.append("\"body\":\"");
+            stringBuilder.append("grant_type=authorization_code&");
+            stringBuilder.append("client_id=");
+            stringBuilder.append(URLEncoder.encode(client_id, StandardCharsets.UTF_8));
+            stringBuilder.append("&");
+            stringBuilder.append("client_secret=");
+            stringBuilder.append(URLEncoder.encode(client_secret, StandardCharsets.UTF_8));
+            stringBuilder.append("&");
+            stringBuilder.append("code=");
+            stringBuilder.append(URLEncoder.encode(code, StandardCharsets.UTF_8));
+            stringBuilder.append("&");
+            stringBuilder.append("redirect_uri=");
+            stringBuilder.append(URLEncoder.encode("http://127.0.0.1:6004/login/oauth2/code/oidc-client", StandardCharsets.UTF_8));
+
+            stringBuilder.append("\"");
+        }else if(ClientAuthenticationMethod.PRIVATE_KEY_JWT.equals(method)){
+
+            stringBuilder.append("fetch(\"http://127.0.0.1:6004/oauth2/token\", {");
+            stringBuilder.append("\"headers\": {");
+            stringBuilder.append("\"content-type\": \"application/x-www-form-urlencoded; charset=UTF-8\",");
+            stringBuilder.append("},");
+            stringBuilder.append("\"method\": \"POST\",");
+            stringBuilder.append("\"body\":\"");
+            stringBuilder.append("grant_type=");
+            stringBuilder.append(URLEncoder.encode("urn:ietf:params:oauth:grant-type:jwt-bearer", StandardCharsets.UTF_8));
+            // stringBuilder.append(URLEncoder.encode("authorization_code", StandardCharsets.UTF_8));
+            stringBuilder.append("&");
+            stringBuilder.append("client_id=");
+            stringBuilder.append(URLEncoder.encode(client_id, StandardCharsets.UTF_8));
+            stringBuilder.append("&");
+
+            stringBuilder.append("client_assertion_type=");
+            stringBuilder.append(URLEncoder.encode("urn:ietf:params:oauth:client-assertion-type:jwt-bearer", StandardCharsets.UTF_8));
+            stringBuilder.append("&");
+
+            stringBuilder.append("client_assertion=");
+
+            //JwtEncoder jwtEncoder =new NimbusJwtEncoder
+
+            stringBuilder.append(URLEncoder.encode("eyJraWQiOiI1YjE5MzhkZi00ODYwLTRhNTgtOTg2YS00NGU4N2NiNDkzNGYiLCJhbGciOiJSUzI1NiJ9.eyJzdWIiOiJ1c2VyIiwiYXVkIjoib2lkYy1jbGllbnQiLCJuYmYiOjE3MDg5NDI0MTcsInNjb3BlIjpbImNsaWVudC5jcmVhdGUiXSwiaXNzIjoiaHR0cDovLzEyNy4wLjAuMTo2MDA0IiwiZXhwIjoxNzA4OTU2ODE3LCJpYXQiOjE3MDg5NDI0MTcsImp0aSI6ImZmZGQ3NDVkLWRjMGQtNDk3OC1iNGJmLWQxNWM4NTM5ZmNkNyJ9.nGRxgbChiPnejT2no3yM_rJ3sWxdmf4M0QSTTeJCkAgA-AO8uCTz7QAx4mtZT3gT5kfzDTcIzugrXy_mNYJKsuEv_FFo-FS-Wn-YrnRjfeikaK23jKpF-UZzVPWE0RdPWLrvi2hUkTjH6XQsku1ejOf3JTo-5ylspjT1ZleSbewBURnNAYuzyKznwUKfBx0DKVNQT1e9suReh1ou9zA2PffaCla7oKfCtTiQpOq12dY1dgyfdhwkVgKfIuTjNe8WNVSbvPtL26r-geR94hfWSwU_kUs9r3K6QrrVOdemGJmAF54r9yPDptRXksFrBgJVy_mzSZICAFoOxnp2LunhGw", StandardCharsets.UTF_8));
+            stringBuilder.append("&");
+
+
+
+            stringBuilder.append("code=");
+            stringBuilder.append(URLEncoder.encode(code, StandardCharsets.UTF_8));
+            stringBuilder.append("&");
+            stringBuilder.append("redirect_uri=");
+            stringBuilder.append(URLEncoder.encode("http://127.0.0.1:6004/login/oauth2/code/oidc-client", StandardCharsets.UTF_8));
+
+            stringBuilder.append("\"");
+        }
+
         stringBuilder.append("}).then(res=>res.json()).then(json=>console.log(json));");
         return stringBuilder.toString();
     }
@@ -100,7 +178,7 @@ public class EndpointUtil {
         stringBuilder.append("fetch(\"http://127.0.0.1:6004/oauth2/introspect\", {");
         stringBuilder.append("\"headers\": {");
         stringBuilder.append("\"content-type\": \"application/x-www-form-urlencoded; charset=UTF-8\",");
-        stringBuilder.append("\"Authorization\": \"Basic " + Base64.encode("oidc-client:secret") + "\"");
+        stringBuilder.append("\"Authorization\": \"Basic " + Base64.encodeBase64URLSafeString("oidc-client:secret".getBytes(StandardCharsets.UTF_8)) + "\"");
         stringBuilder.append("},");
         stringBuilder.append("\"method\": \"POST\",");
         stringBuilder.append("\"body\":\"");
@@ -135,7 +213,7 @@ public class EndpointUtil {
         stringBuilder.append("fetch(\"http://127.0.0.1:6004/oauth2/revoke\", {");
         stringBuilder.append("\"headers\": {");
         stringBuilder.append("\"content-type\": \"application/x-www-form-urlencoded; charset=UTF-8\",");
-        stringBuilder.append("\"Authorization\": \"Basic " + Base64.encode("oidc-client:secret") + "\"");
+        stringBuilder.append("\"Authorization\": \"Basic " + Base64.encodeBase64URLSafeString("oidc-client:secret".getBytes(StandardCharsets.UTF_8)) + "\"");
         stringBuilder.append("},");
         stringBuilder.append("\"method\": \"POST\",");
         stringBuilder.append("\"body\":\"");
@@ -201,6 +279,9 @@ public class EndpointUtil {
 
     /**
      * 请求端点：/oauth2/jwks <br/>
+     * 无论我们使用哪种签名算法，都存在密钥泄漏的风险。所以为了提高安全性，我们通常建议定期轮换或者更新密钥。但显然手动将新的密钥配置到服务器中并不是一个好的选择，特别是多个服务器在使用同一组密钥时。在多租户的场景下，我们可能还需要为不同的租户提供不同的密钥。
+     *
+     * 所以我们需要一种更加高效的管理和分发密钥的机制，而这就是 JWKS Endpoint 存在的目的。
      * 请求方式 GET <br/>
      * <a href="https://datatracker.ietf.org/doc/html/rfc7517">参考</a><br/>
      * 相应结果：</br>
@@ -307,5 +388,129 @@ public class EndpointUtil {
      */
     public static String getOpenidLogoutUrl(String token) {
         return null;
+    }
+
+    public static String usingJWTsForClientAuthentication(String code, String client_id, String publicKeyString) {
+        StringBuilder stringBuilder = new StringBuilder();
+        stringBuilder.append("fetch(\"http://127.0.0.1:6004/oauth2/token\", {");
+        stringBuilder.append("\"headers\": {");
+        stringBuilder.append("\"content-type\": \"application/x-www-form-urlencoded; charset=UTF-8\",");
+        stringBuilder.append("},");
+        stringBuilder.append("\"method\": \"POST\",");
+        stringBuilder.append("\"body\":\"");
+
+        stringBuilder.append("grant_type=");
+        stringBuilder.append(URLEncoder.encode("authorization_code", StandardCharsets.UTF_8));
+        stringBuilder.append("&");
+
+        stringBuilder.append("client_id=");
+        stringBuilder.append(URLEncoder.encode(client_id, StandardCharsets.UTF_8));
+        stringBuilder.append("&");
+
+        stringBuilder.append("client_assertion_type=");
+        stringBuilder.append(URLEncoder.encode("urn:ietf:params:oauth:client-assertion-type:jwt-bearer", StandardCharsets.UTF_8));
+        stringBuilder.append("&");
+
+        stringBuilder.append("client_assertion=");
+        stringBuilder.append(URLEncoder.encode(publicKeyString, StandardCharsets.UTF_8));
+
+        stringBuilder.append("\"");
+        stringBuilder.append("}).then(json=>console.log(json));");
+        return stringBuilder.toString();
+    }
+
+    public static String usingJWTsAsAuthorizationGrants(String privateKeyString) {
+        StringBuilder stringBuilder = new StringBuilder();
+        stringBuilder.append("fetch(\"http://127.0.0.1:6004/oauth2/token\", {");
+        stringBuilder.append("\"headers\": {");
+        stringBuilder.append("\"content-type\": \"application/x-www-form-urlencoded; charset=UTF-8\",");
+        stringBuilder.append("},");
+        stringBuilder.append("\"method\": \"POST\",");
+        stringBuilder.append("\"body\":\"");
+        stringBuilder.append("grant_type=");
+        stringBuilder.append(URLEncoder.encode("urn:ietf:params:oauth:grant-type:jwt-bearer", StandardCharsets.UTF_8));
+        stringBuilder.append("&");
+        stringBuilder.append("assertion=");
+        stringBuilder.append(URLEncoder.encode(getJWT(privateKeyString), StandardCharsets.UTF_8));
+
+        stringBuilder.append("\"");
+        stringBuilder.append("}).then(json=>console.log(json));");
+        return stringBuilder.toString();
+    }
+
+
+    public static String getJWT(String publicKeyJSON) {
+
+        String client_id = "oidc-client";
+        List<String> audience = new ArrayList<>();
+        audience.add(client_id);
+
+        Instant issuedAt = Instant.now();
+        JwtClaimsSet jwtClaimsSet = JwtClaimsSet.builder()
+                .issuer(client_id)
+                .subject(client_id)
+                .expiresAt(issuedAt.plus(30, DAYS))// 过期时间
+                .issuedAt(issuedAt)// 访问时间
+                .issuer("http://127.0.0.1:6004")
+                .audience(audience)
+                .claim("scope", new String[]{"client.create"})
+                .build();
+
+        Map<String, String> map = JSONObject.parseObject(publicKeyJSON, Map.class);
+        String kty = (String) map.get("kty");
+        String e = (String) map.get("e");
+        String kid = (String) map.get("kid");
+        String n = (String) map.get("n");
+
+        JwsHeader jwsHeader = JwsHeader.with(SignatureAlgorithm.RS256).build();
+        Map<String, Object> headers = jwsHeader.getHeaders();
+        String headJSON = JSON.toJSONString(headers);
+        String headBase64 = Base64.encodeBase64URLSafeString(headJSON.getBytes(StandardCharsets.UTF_8));
+
+        Map<String, Object> claims = jwtClaimsSet.getClaims();
+        String claimsJSON = JSON.toJSONString(claims);
+        String claimsBase64 = Base64.encodeBase64URLSafeString(claimsJSON.getBytes(StandardCharsets.UTF_8));
+
+        BigInteger publicExponent = new BigInteger(1, Base64.decodeBase64(e));
+        BigInteger modulus = new BigInteger(1, Base64.decodeBase64(n));
+        RSAPrivateKeySpec rsaPrivateKeySpec = new RSAPrivateKeySpec(modulus, publicExponent);
+
+        KeyFactory factory = null;
+        try {
+            factory = KeyFactory.getInstance("RSA");
+        } catch (NoSuchAlgorithmException ex) {
+            ex.printStackTrace();
+        }
+
+        RSAPrivateKey rsaPrivateKey = null;
+        try {
+            // 拿服务端的公钥作为客户端的私钥
+            rsaPrivateKey = (RSAPrivateKey) factory.generatePrivate(rsaPrivateKeySpec);
+        } catch (InvalidKeySpecException ex) {
+            ex.printStackTrace();
+        }
+
+        Signature signature = null;
+        try {
+            signature = Signature.getInstance("SHA256withRSA");
+        } catch (NoSuchAlgorithmException ex) {
+            ex.printStackTrace();
+        }
+        // 初始化签名-私钥签名；公钥验证
+        try {
+            signature.initSign(rsaPrivateKey);
+        } catch (InvalidKeyException ex) {
+            ex.printStackTrace();
+        }
+        // 数据body带入
+        String sign = null;
+        try {
+            signature.update((headBase64 + "." + claimsBase64).getBytes(StandardCharsets.UTF_8));
+            // 对签名进行Base64编码
+            sign = Base64.encodeBase64String(signature.sign());
+        } catch (SignatureException ex) {
+            ex.printStackTrace();
+        }
+        return headBase64 + "." + claimsBase64 + '.' + sign;
     }
 }

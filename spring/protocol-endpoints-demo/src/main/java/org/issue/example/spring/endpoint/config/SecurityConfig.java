@@ -14,6 +14,8 @@ import com.nimbusds.jose.jwk.source.ImmutableJWKSet;
 import com.nimbusds.jose.jwk.source.JWKSource;
 import com.nimbusds.jose.proc.SecurityContext;
 
+import org.issue.example.spring.endpoint.converter.JwtBearerAuthenticationConverter;
+import org.issue.example.spring.endpoint.converter.JwtBearerAuthenticationProvider;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.core.annotation.Order;
@@ -27,6 +29,7 @@ import org.springframework.security.core.userdetails.UserDetailsService;
 import org.springframework.security.oauth2.core.AuthorizationGrantType;
 import org.springframework.security.oauth2.core.ClientAuthenticationMethod;
 import org.springframework.security.oauth2.core.oidc.OidcScopes;
+import org.springframework.security.oauth2.jose.jws.SignatureAlgorithm;
 import org.springframework.security.oauth2.jwt.JwtDecoder;
 import org.springframework.security.oauth2.server.authorization.client.InMemoryRegisteredClientRepository;
 import org.springframework.security.oauth2.server.authorization.client.RegisteredClient;
@@ -60,7 +63,12 @@ public class SecurityConfig {
                 .oidc(oidcConfigurer -> oidcConfigurer // Enable OpenID Connect 1.0
                         .clientRegistrationEndpoint(Customizer.withDefaults())
                         .userInfoEndpoint(Customizer.withDefaults())
-                        .logoutEndpoint(Customizer.withDefaults()));
+                        .logoutEndpoint(Customizer.withDefaults())
+                )
+                .tokenEndpoint(tokenEndpointCustomizer -> tokenEndpointCustomizer
+                                .accessTokenRequestConverter(new JwtBearerAuthenticationConverter(http))
+                                .authenticationProvider(new JwtBearerAuthenticationProvider())
+                );
         http
                 // Redirect to the login page when not authenticated from the
                 // authorization endpoint
@@ -110,6 +118,9 @@ public class SecurityConfig {
                 .clientId("oidc-client")
                 .clientSecret("{noop}secret")
                 .clientAuthenticationMethod(ClientAuthenticationMethod.CLIENT_SECRET_BASIC)
+                .clientAuthenticationMethod(ClientAuthenticationMethod.CLIENT_SECRET_POST)
+                .clientAuthenticationMethod(ClientAuthenticationMethod.PRIVATE_KEY_JWT)
+                .clientAuthenticationMethod(ClientAuthenticationMethod.CLIENT_SECRET_JWT)
                 .authorizationGrantType(AuthorizationGrantType.AUTHORIZATION_CODE)
                 .authorizationGrantType(AuthorizationGrantType.REFRESH_TOKEN)
                 .redirectUri("http://127.0.0.1:6004/login/oauth2/code/oidc-client")
@@ -117,7 +128,10 @@ public class SecurityConfig {
                 .scope("client.create")
                 .scope(OidcScopes.OPENID)
                 .scope(OidcScopes.PROFILE)
-                .clientSettings(ClientSettings.builder().requireAuthorizationConsent(true).build())
+                .clientSettings(ClientSettings.builder().requireAuthorizationConsent(true)
+                        .tokenEndpointAuthenticationSigningAlgorithm(SignatureAlgorithm.RS256)
+                        .jwkSetUrl("http://127.0.0.1:6004/oauth2/jwks")
+                        .build())
                 .tokenSettings(TokenSettings.builder()
                         .accessTokenTimeToLive(Duration.ofHours(4l)).build())
                 .build();

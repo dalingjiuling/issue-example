@@ -1,28 +1,16 @@
 package org.issue.example.spring.endpoint.utils;
 
-import com.alibaba.fastjson2.JSON;
-import com.alibaba.fastjson2.JSONObject;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
 import org.apache.commons.codec.binary.Base64;
 import org.springframework.security.oauth2.core.ClientAuthenticationMethod;
 import org.springframework.security.oauth2.core.oidc.OidcScopes;
-import org.springframework.security.oauth2.jose.jws.SignatureAlgorithm;
-import org.springframework.security.oauth2.jwt.*;
 import org.springframework.security.oauth2.server.authorization.oidc.OidcClientRegistration;
 
-import java.math.BigInteger;
 import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
-import java.security.*;
-import java.security.interfaces.RSAPrivateKey;
-import java.security.spec.InvalidKeySpecException;
-import java.security.spec.RSAPrivateKeySpec;
 import java.time.Instant;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Map;
 
 import static java.time.temporal.ChronoUnit.DAYS;
 
@@ -33,6 +21,8 @@ import static java.time.temporal.ChronoUnit.DAYS;
  * @Modified By:
  */
 public class EndpointUtil {
+
+    private static final String redirect_uri = "http://127.0.0.1:8089/client/oauth2/code";
 
     /**
      * 请求端点：/oauth2/authorize <br/>
@@ -50,7 +40,7 @@ public class EndpointUtil {
         stringBuilder.append(URLEncoder.encode("client.create", StandardCharsets.UTF_8));
         stringBuilder.append("&");
         stringBuilder.append("redirect_uri=");
-        stringBuilder.append(URLEncoder.encode("http://127.0.0.1:6004/login/oauth2/code/oidc-client", StandardCharsets.UTF_8));
+        stringBuilder.append(URLEncoder.encode(redirect_uri, StandardCharsets.UTF_8));
         return stringBuilder.toString();
     }
 
@@ -89,7 +79,7 @@ public class EndpointUtil {
         stringBuilder.append(URLEncoder.encode(code, StandardCharsets.UTF_8));
         stringBuilder.append("&");
         stringBuilder.append("redirect_uri=");
-        stringBuilder.append(URLEncoder.encode("http://127.0.0.1:6004/login/oauth2/code/oidc-client", StandardCharsets.UTF_8));
+        stringBuilder.append(URLEncoder.encode(redirect_uri, StandardCharsets.UTF_8));
 
         stringBuilder.append("\"");
         stringBuilder.append("}).then(res=>res.json()).then(json=>console.log(json));");
@@ -117,7 +107,7 @@ public class EndpointUtil {
             stringBuilder.append(URLEncoder.encode(code, StandardCharsets.UTF_8));
             stringBuilder.append("&");
             stringBuilder.append("redirect_uri=");
-            stringBuilder.append(URLEncoder.encode("http://127.0.0.1:6004/login/oauth2/code/oidc-client", StandardCharsets.UTF_8));
+            stringBuilder.append(URLEncoder.encode(redirect_uri, StandardCharsets.UTF_8));
 
             stringBuilder.append("\"");
         }else if(ClientAuthenticationMethod.PRIVATE_KEY_JWT.equals(method)){
@@ -153,7 +143,7 @@ public class EndpointUtil {
             stringBuilder.append(URLEncoder.encode(code, StandardCharsets.UTF_8));
             stringBuilder.append("&");
             stringBuilder.append("redirect_uri=");
-            stringBuilder.append(URLEncoder.encode("http://127.0.0.1:6004/login/oauth2/code/oidc-client", StandardCharsets.UTF_8));
+            stringBuilder.append(URLEncoder.encode(redirect_uri, StandardCharsets.UTF_8));
 
             stringBuilder.append("\"");
         }
@@ -390,7 +380,7 @@ public class EndpointUtil {
         return null;
     }
 
-    public static String usingJWTsForClientAuthentication(String code, String client_id, String publicKeyString) {
+    public static String usingJWTsForClientAuthentication(String code, String client_id, String jwt) {
         StringBuilder stringBuilder = new StringBuilder();
         stringBuilder.append("fetch(\"http://127.0.0.1:6004/oauth2/token\", {");
         stringBuilder.append("\"headers\": {");
@@ -403,6 +393,14 @@ public class EndpointUtil {
         stringBuilder.append(URLEncoder.encode("authorization_code", StandardCharsets.UTF_8));
         stringBuilder.append("&");
 
+        stringBuilder.append("code=");
+        stringBuilder.append(URLEncoder.encode(code, StandardCharsets.UTF_8));
+        stringBuilder.append("&");
+
+        stringBuilder.append("redirect_uri=");
+        stringBuilder.append(URLEncoder.encode(redirect_uri, StandardCharsets.UTF_8));
+        stringBuilder.append("&");
+
         stringBuilder.append("client_id=");
         stringBuilder.append(URLEncoder.encode(client_id, StandardCharsets.UTF_8));
         stringBuilder.append("&");
@@ -412,14 +410,14 @@ public class EndpointUtil {
         stringBuilder.append("&");
 
         stringBuilder.append("client_assertion=");
-        stringBuilder.append(URLEncoder.encode(publicKeyString, StandardCharsets.UTF_8));
+        stringBuilder.append(URLEncoder.encode(jwt, StandardCharsets.UTF_8));
 
         stringBuilder.append("\"");
         stringBuilder.append("}).then(json=>console.log(json));");
         return stringBuilder.toString();
     }
 
-    public static String usingJWTsAsAuthorizationGrants(String privateKeyString) {
+    public static String usingJWTsAsAuthorizationGrants(String jwt) {
         StringBuilder stringBuilder = new StringBuilder();
         stringBuilder.append("fetch(\"http://127.0.0.1:6004/oauth2/token\", {");
         stringBuilder.append("\"headers\": {");
@@ -431,86 +429,10 @@ public class EndpointUtil {
         stringBuilder.append(URLEncoder.encode("urn:ietf:params:oauth:grant-type:jwt-bearer", StandardCharsets.UTF_8));
         stringBuilder.append("&");
         stringBuilder.append("assertion=");
-        stringBuilder.append(URLEncoder.encode(getJWT(privateKeyString), StandardCharsets.UTF_8));
+        stringBuilder.append(URLEncoder.encode(jwt, StandardCharsets.UTF_8));
 
         stringBuilder.append("\"");
         stringBuilder.append("}).then(json=>console.log(json));");
         return stringBuilder.toString();
-    }
-
-
-    public static String getJWT(String publicKeyJSON) {
-
-        String client_id = "oidc-client";
-        List<String> audience = new ArrayList<>();
-        audience.add(client_id);
-
-        Instant issuedAt = Instant.now();
-        JwtClaimsSet jwtClaimsSet = JwtClaimsSet.builder()
-                .issuer(client_id)
-                .subject(client_id)
-                .expiresAt(issuedAt.plus(30, DAYS))// 过期时间
-                .issuedAt(issuedAt)// 访问时间
-                .issuer("http://127.0.0.1:6004")
-                .audience(audience)
-                .claim("scope", new String[]{"client.create"})
-                .build();
-
-        Map<String, String> map = JSONObject.parseObject(publicKeyJSON, Map.class);
-        String kty = (String) map.get("kty");
-        String e = (String) map.get("e");
-        String kid = (String) map.get("kid");
-        String n = (String) map.get("n");
-
-        JwsHeader jwsHeader = JwsHeader.with(SignatureAlgorithm.RS256).build();
-        Map<String, Object> headers = jwsHeader.getHeaders();
-        String headJSON = JSON.toJSONString(headers);
-        String headBase64 = Base64.encodeBase64URLSafeString(headJSON.getBytes(StandardCharsets.UTF_8));
-
-        Map<String, Object> claims = jwtClaimsSet.getClaims();
-        String claimsJSON = JSON.toJSONString(claims);
-        String claimsBase64 = Base64.encodeBase64URLSafeString(claimsJSON.getBytes(StandardCharsets.UTF_8));
-
-        BigInteger publicExponent = new BigInteger(1, Base64.decodeBase64(e));
-        BigInteger modulus = new BigInteger(1, Base64.decodeBase64(n));
-        RSAPrivateKeySpec rsaPrivateKeySpec = new RSAPrivateKeySpec(modulus, publicExponent);
-
-        KeyFactory factory = null;
-        try {
-            factory = KeyFactory.getInstance("RSA");
-        } catch (NoSuchAlgorithmException ex) {
-            ex.printStackTrace();
-        }
-
-        RSAPrivateKey rsaPrivateKey = null;
-        try {
-            // 拿服务端的公钥作为客户端的私钥
-            rsaPrivateKey = (RSAPrivateKey) factory.generatePrivate(rsaPrivateKeySpec);
-        } catch (InvalidKeySpecException ex) {
-            ex.printStackTrace();
-        }
-
-        Signature signature = null;
-        try {
-            signature = Signature.getInstance("SHA256withRSA");
-        } catch (NoSuchAlgorithmException ex) {
-            ex.printStackTrace();
-        }
-        // 初始化签名-私钥签名；公钥验证
-        try {
-            signature.initSign(rsaPrivateKey);
-        } catch (InvalidKeyException ex) {
-            ex.printStackTrace();
-        }
-        // 数据body带入
-        String sign = null;
-        try {
-            signature.update((headBase64 + "." + claimsBase64).getBytes(StandardCharsets.UTF_8));
-            // 对签名进行Base64编码
-            sign = Base64.encodeBase64String(signature.sign());
-        } catch (SignatureException ex) {
-            ex.printStackTrace();
-        }
-        return headBase64 + "." + claimsBase64 + '.' + sign;
     }
 }

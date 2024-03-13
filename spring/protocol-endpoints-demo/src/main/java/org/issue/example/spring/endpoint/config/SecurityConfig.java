@@ -123,14 +123,16 @@ public class SecurityConfig {
                 .clientAuthenticationMethod(ClientAuthenticationMethod.CLIENT_SECRET_JWT)
                 .authorizationGrantType(AuthorizationGrantType.AUTHORIZATION_CODE)
                 .authorizationGrantType(AuthorizationGrantType.REFRESH_TOKEN)
-                .redirectUri("http://127.0.0.1:6004/login/oauth2/code/oidc-client")
+                // 返回授权码的回调客户端地址
+                .redirectUri("http://127.0.0.1:8089/client/oauth2/code")
                 .postLogoutRedirectUri("http://127.0.0.1:6004/")
                 .scope("client.create")
                 .scope(OidcScopes.OPENID)
                 .scope(OidcScopes.PROFILE)
                 .clientSettings(ClientSettings.builder().requireAuthorizationConsent(true)
                         .tokenEndpointAuthenticationSigningAlgorithm(SignatureAlgorithm.RS256)
-                        .jwkSetUrl("http://127.0.0.1:6004/oauth2/jwks")
+                        // 配置公钥获取地址，公私钥加密需要获取公钥来验证jwt（验签）
+                        .jwkSetUrl("http://127.0.0.1:8089/client/jwks")
                         .build())
                 .tokenSettings(TokenSettings.builder()
                         .accessTokenTimeToLive(Duration.ofHours(4l)).build())

@@ -131,7 +131,7 @@ public class SecurityConfig {
                 .scope(OidcScopes.PROFILE)
                 .clientSettings(ClientSettings.builder().requireAuthorizationConsent(true)
                         .tokenEndpointAuthenticationSigningAlgorithm(SignatureAlgorithm.RS256)
-                        // 配置公钥获取地址，公私钥加密需要获取公钥来验证jwt（验签）
+                        // 配置公钥获取地址，需要获取公钥集来验证jwt（验签）
                         .jwkSetUrl("http://127.0.0.1:8089/client/jwks")
                         .build())
                 .tokenSettings(TokenSettings.builder()

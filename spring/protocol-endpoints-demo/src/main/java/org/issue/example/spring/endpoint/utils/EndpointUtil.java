@@ -413,7 +413,7 @@ public class EndpointUtil {
         stringBuilder.append(URLEncoder.encode(jwt, StandardCharsets.UTF_8));
 
         stringBuilder.append("\"");
-        stringBuilder.append("}).then(json=>console.log(json));");
+        stringBuilder.append("}).then(res=>res.json()).then(json=>console.log(json));");
         return stringBuilder.toString();
     }
 

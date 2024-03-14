@@ -82,7 +82,7 @@ public class JwtUtil {
     }
 
     /**
-     * 根据公钥验证验证JWT（JSON WEB TOKEN）<br/>
+     * 根据公钥验证JWT（JSON WEB TOKEN）<br/>
      * 参考{@link com.nimbusds.jwt.proc.DefaultJWTProcessor#process(SignedJWT, SecurityContext)}
      *
      * @param jwksUrl 根据jwks地址获取publicKey地址

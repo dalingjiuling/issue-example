@@ -1,8 +1,10 @@
 package org.issue.example.client.util;
 
 import com.nimbusds.jose.*;
+import com.nimbusds.jose.crypto.MACSigner;
 import com.nimbusds.jose.crypto.RSASSASigner;
 import com.nimbusds.jose.crypto.factories.DefaultJWSVerifierFactory;
+import com.nimbusds.jose.jca.JCAContext;
 import com.nimbusds.jose.jwk.*;
 import com.nimbusds.jose.jwk.source.RemoteJWKSet;
 import com.nimbusds.jose.proc.JWSVerifierFactory;
@@ -18,11 +20,13 @@ import org.springframework.core.io.ClassPathResource;
 import javax.crypto.SecretKey;
 import java.io.IOException;
 import java.net.URL;
+import java.nio.charset.StandardCharsets;
 import java.security.*;
 import java.text.ParseException;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.ListIterator;
+import java.util.UUID;
 
 public class JwtUtil {
 
@@ -47,13 +51,42 @@ public class JwtUtil {
     }
 
     /**
-     * 使用RSA算法加签生成JWT（JSON WEB TOKEN）
+     * 使用RSA（是一种非对称算法） 算法加签生成JWT（JSON WEB TOKEN）
      */
     public static String rsaSign(JWTClaimsSet claimsSet) throws JOSEException {
         KeyPair keyPair = loadRsaKey();
         RSASSASigner signer = new RSASSASigner(keyPair.getPrivate());
 
         SignedJWT signedJWT = new SignedJWT(new JWSHeader(JWSAlgorithm.RS256), claimsSet);
+        signedJWT.sign(signer);
+        String token = signedJWT.serialize();
+        return token;
+    }
+
+    /**
+     * 使用HMAC算法加签生成JWT（JSON WEB TOKEN）
+     *
+     * @param clientSecret 密钥，长度必须至少为33位
+     * @param claimsSet    加签数据
+     * @return JWT
+     * @throws JOSEException
+     */
+    public static String hmacSign(String clientSecret, JWTClaimsSet claimsSet) throws JOSEException {
+        JWSAlgorithm jwsAlgorithm = JWSAlgorithm.HS256;
+
+
+        OctetSequenceKey key = new OctetSequenceKey.Builder(clientSecret.getBytes(StandardCharsets.UTF_8))
+                .keyID(UUID.randomUUID().toString())
+                .build();
+
+        // 参考：DefaultJWSSignerFactory
+        JWSSigner signer = new MACSigner(key);
+        // Apply JCA context
+        JCAContext jcaContext = new JCAContext();
+        signer.getJCAContext().setSecureRandom(jcaContext.getSecureRandom());
+        signer.getJCAContext().setProvider(jcaContext.getProvider());
+
+        SignedJWT signedJWT = new SignedJWT(new JWSHeader(jwsAlgorithm), claimsSet);
         signedJWT.sign(signer);
         String token = signedJWT.serialize();
         return token;

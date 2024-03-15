@@ -1,4 +1,4 @@
-package org.issue.example.spring.endpoint.converter;
+package rg.issue.example.spring.grants.converter;
 
 import com.nimbusds.jose.JOSEException;
 import com.nimbusds.jose.JWSAlgorithm;

@@ -19,6 +19,7 @@
         <module>authentication-stored</module>
         <module>protocol-endpoints-demo</module>
         <module>client-endpoints</module>
+        <module>jwt-authorization-grants</module>
     </modules>
 
     <properties>

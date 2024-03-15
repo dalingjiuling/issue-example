@@ -1,4 +1,4 @@
-package org.issue.example.spring.endpoint.converter;
+package rg.issue.example.spring.grants.converter;
 
 import org.springframework.security.authentication.AuthenticationProvider;
 import org.springframework.security.core.Authentication;

@@ -66,7 +66,7 @@ public class JwtUtil {
     /**
      * 使用HMAC算法加签生成JWT（JSON WEB TOKEN）
      *
-     * @param clientSecret 密钥，长度必须至少为33位
+     * @param clientSecret 密钥，长度必须至少为32位
      * @param claimsSet    加签数据
      * @return JWT
      * @throws JOSEException

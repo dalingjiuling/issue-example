@@ -1,0 +1,15 @@
+package org.issue.example.spring.grants.util;
+
+import org.junit.jupiter.api.Test;
+
+/**
+ * 端点工具类测试
+ */
+public class EndpointUtilTest {
+    final String jwk = "eyJhbGciOiJSUzI1NiJ9.eyJzdWIiOiJvaWRjLWNsaWVudCIsImF1ZCI6WyJodHRwOi8vMTI3LjAuMC4xOjYwMDQiLCJodHRwOi8vMTI3LjAuMC4xOjYwMDQvb2F1dGgyL3Rva2VuIiwiaHR0cDovLzEyNy4wLjAuMTo2MDA0L29hdXRoMi9pbnRyb3NwZWN0IiwiaHR0cDovLzEyNy4wLjAuMTo2MDA0L29hdXRoMi9yZXZva2UiXSwiandrLXNldC11cmwiOiJodHRwOi8vMTI3LjAuMC4xOjgwODkvY2xpZW50L2p3a3MiLCJzY29wZSI6WyJjbGllbnQuY3JlYXRlIl0sImlzcyI6Im9pZGMtY2xpZW50IiwiZXhwIjoxNzEwNDc0MDYzLCJpYXQiOjE3MTAzODc2NjN9.Epx4rjjHfs-pwLWYfdukXAm_C-TQaCT9mBlMDN6RLuJJFDsBsluSXNda5-g8i01-rEhsKfvqf4y7aqgIl_YHRoRmYVgZDepvpsoqJ1AOgKgOZOQGNTpQGxV4eQZk-x3ZOGjhHqNdSp3cxjERE4aFcfp0SYYEen-_hEU6MN6AUJS1CauLPnJADTSlRer0A4qfeqMcAvEqF73AhUgcnHjVLqNjBdVhIkzc365dUXlVID51sZP4jfKSorz-LEr1Sv9iIw5ooKiSgRYCDP0-3e0hF97UOrUojO2FI_ObH4q2FpjaE5GjI3j6Gt-C6MyHoY9L0Rm-DAuYGzhG4jtaF9tP2A";
+
+    @Test
+    public void usingJWTsAsAuthorizationGrantsTest() {
+        System.out.println(EndpointUtil.usingJWTsAsAuthorizationGrants(jwk));
+    }
+}

@@ -1,4 +1,4 @@
-package rg.issue.example.spring.grants.converter;
+package org.issue.example.spring.grants.converter;
 
 import org.springframework.security.authentication.AbstractAuthenticationToken;
 import org.springframework.security.core.Transient;

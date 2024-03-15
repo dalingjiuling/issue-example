@@ -10,10 +10,10 @@ import org.springframework.boot.autoconfigure.SpringBootApplication;
  * @Modified By:
  */
 @SpringBootApplication
-public class IntrospectionApplication {
+public class EndpointsApplication {
 
     public static void main(String[] args) {
-        SpringApplication.run(IntrospectionApplication.class, args);
+        SpringApplication.run(EndpointsApplication.class, args);
         System.out.println("===================success!!!=================");
     }
 }

@@ -16,7 +16,7 @@ import static java.time.temporal.ChronoUnit.DAYS;
 
 /**
  * @Author: Mr.Zhao
- * @Description:
+ * @Description: 端点工具类
  * @Date:Create：in 2024/2/19 15:55
  * @Modified By:
  */
@@ -29,11 +29,13 @@ public class EndpointUtil {
      * <a href="https://datatracker.ietf.org/doc/html/rfc6749#section-4.1.1">参考</a><br/>
      * 请求方式 get/post，请求context-type:application/x-www-form-urlencoded <br/>
      */
-    public static String getAuthorizationCodeUrlEncoded() {
+    public static String getAuthorizationCodeUrlEncoded(String client_id) {
         StringBuilder stringBuilder = new StringBuilder();
         stringBuilder.append("http://127.0.0.1:6004/oauth2/authorize?");
         stringBuilder.append("response_type=code&");
-        stringBuilder.append("client_id=oidc-client&");
+        stringBuilder.append("client_id=");
+        stringBuilder.append(URLEncoder.encode(client_id, StandardCharsets.UTF_8));
+        stringBuilder.append("&");
         stringBuilder.append("scope=");
         // stringBuilder.append(URLEncoder.encode("openid profile client.create", StandardCharsets.UTF_8));
         // 调用/connect/register时，scope只能是client.create
@@ -58,72 +60,60 @@ public class EndpointUtil {
      * "body": "grant_type=authorization_code&code=b6-oXiVzgmckTQmbHHFGc0TjvzfDUUGRGzUXYRbkl8iuFFH_v-7UxuCxNzMRLaTC1A0Epgj5fOJebIuj2nLlw_RFG95JZMtOSCuV6M7ztWGlvAr_tsBiRSTsGfnOzGIv&redirect_uri=http%3A%2F%2F127.0.0.1%3A6004%2Flogin%2Foauth2%2Fcode%2Foidc-client"<br/>
      * }).then(res=>res.json()).then(json=>console.log(json)); <br/>
      *
-     * @param code 授权码，只能用一次
+     * @param client_id                       客户端ID
+     * @param code                            授权码，只能用一次
+     * @param clientSecret_or_clientAssertion 客户端秘钥或者clientAssertion（jwt）
+     * @param method                          客户端身份验证方法
+     * @return Fetch API 调用逻辑
      */
-    public static String getAccessTokenUrl(String client_id, String code) {
+    public static String getAccessTokenUrl(String client_id, String code, String clientSecret_or_clientAssertion,
+                                           ClientAuthenticationMethod method) {
         StringBuilder stringBuilder = new StringBuilder();
-
         stringBuilder.append("fetch(\"http://127.0.0.1:6004/oauth2/token\", {");
         stringBuilder.append("\"headers\": {");
         stringBuilder.append("\"content-type\": \"application/x-www-form-urlencoded; charset=UTF-8\",");
-        stringBuilder.append("\"Authorization\": \"Basic " + Base64.encodeBase64URLSafeString("oidc-client:secret".getBytes(StandardCharsets.UTF_8)) + "\"");
+        if (ClientAuthenticationMethod.CLIENT_SECRET_BASIC.equals(method)) {
+            stringBuilder.append("\"Authorization\": \"Basic " +
+                    Base64.encodeBase64URLSafeString((client_id + ":" + clientSecret_or_clientAssertion).getBytes(StandardCharsets.UTF_8)) + "\"");
+        }
         stringBuilder.append("},");
         stringBuilder.append("\"method\": \"POST\",");
         stringBuilder.append("\"body\":\"");
-
         stringBuilder.append("grant_type=authorization_code&");
-        stringBuilder.append("client_id=");
-        stringBuilder.append(URLEncoder.encode(client_id, StandardCharsets.UTF_8));
-        stringBuilder.append("&");
         stringBuilder.append("code=");
         stringBuilder.append(URLEncoder.encode(code, StandardCharsets.UTF_8));
         stringBuilder.append("&");
-        stringBuilder.append("redirect_uri=");
-        stringBuilder.append(URLEncoder.encode(redirect_uri, StandardCharsets.UTF_8));
 
-        stringBuilder.append("\"");
-        stringBuilder.append("}).then(res=>res.json()).then(json=>console.log(json));");
-        return stringBuilder.toString();
-    }
+        if (ClientAuthenticationMethod.CLIENT_SECRET_POST.equals(method)) {
 
-    public static String getAccessTokenUrl(String client_id, String code,String client_secret,ClientAuthenticationMethod method) {
-        StringBuilder stringBuilder = new StringBuilder();
-        if(ClientAuthenticationMethod.CLIENT_SECRET_POST.equals(method)){
-
-            stringBuilder.append("fetch(\"http://127.0.0.1:6004/oauth2/token\", {");
-            stringBuilder.append("\"headers\": {");
-            stringBuilder.append("\"content-type\": \"application/x-www-form-urlencoded; charset=UTF-8\",");
-            stringBuilder.append("},");
-            stringBuilder.append("\"method\": \"POST\",");
-            stringBuilder.append("\"body\":\"");
-            stringBuilder.append("grant_type=authorization_code&");
             stringBuilder.append("client_id=");
             stringBuilder.append(URLEncoder.encode(client_id, StandardCharsets.UTF_8));
             stringBuilder.append("&");
+
             stringBuilder.append("client_secret=");
-            stringBuilder.append(URLEncoder.encode(client_secret, StandardCharsets.UTF_8));
+            stringBuilder.append(URLEncoder.encode(clientSecret_or_clientAssertion, StandardCharsets.UTF_8));
             stringBuilder.append("&");
-            stringBuilder.append("code=");
-            stringBuilder.append(URLEncoder.encode(code, StandardCharsets.UTF_8));
+
+            stringBuilder.append("redirect_uri=");
+            stringBuilder.append(URLEncoder.encode(redirect_uri, StandardCharsets.UTF_8));
+
+        } else if (ClientAuthenticationMethod.CLIENT_SECRET_BASIC.equals(method)) {
+
+            stringBuilder.append("client_id=");
+            stringBuilder.append(URLEncoder.encode(client_id, StandardCharsets.UTF_8));
             stringBuilder.append("&");
             stringBuilder.append("redirect_uri=");
             stringBuilder.append(URLEncoder.encode(redirect_uri, StandardCharsets.UTF_8));
 
-            stringBuilder.append("\"");
-        }else if(ClientAuthenticationMethod.PRIVATE_KEY_JWT.equals(method)){
+        } else if (ClientAuthenticationMethod.PRIVATE_KEY_JWT.equals(method) ||
+                ClientAuthenticationMethod.CLIENT_SECRET_JWT.equals(method)) {
 
-            stringBuilder.append("fetch(\"http://127.0.0.1:6004/oauth2/token\", {");
-            stringBuilder.append("\"headers\": {");
-            stringBuilder.append("\"content-type\": \"application/x-www-form-urlencoded; charset=UTF-8\",");
-            stringBuilder.append("},");
-            stringBuilder.append("\"method\": \"POST\",");
-            stringBuilder.append("\"body\":\"");
-            stringBuilder.append("grant_type=");
-            stringBuilder.append(URLEncoder.encode("urn:ietf:params:oauth:grant-type:jwt-bearer", StandardCharsets.UTF_8));
-            // stringBuilder.append(URLEncoder.encode("authorization_code", StandardCharsets.UTF_8));
-            stringBuilder.append("&");
             stringBuilder.append("client_id=");
             stringBuilder.append(URLEncoder.encode(client_id, StandardCharsets.UTF_8));
+            stringBuilder.append("&");
+
+            stringBuilder.append("redirect_uri=");
+            stringBuilder.append(URLEncoder.encode(redirect_uri, StandardCharsets.UTF_8));
             stringBuilder.append("&");
 
             stringBuilder.append("client_assertion_type=");
@@ -131,27 +121,12 @@ public class EndpointUtil {
             stringBuilder.append("&");
 
             stringBuilder.append("client_assertion=");
-
-            //JwtEncoder jwtEncoder =new NimbusJwtEncoder
-
-            stringBuilder.append(URLEncoder.encode("eyJraWQiOiI1YjE5MzhkZi00ODYwLTRhNTgtOTg2YS00NGU4N2NiNDkzNGYiLCJhbGciOiJSUzI1NiJ9.eyJzdWIiOiJ1c2VyIiwiYXVkIjoib2lkYy1jbGllbnQiLCJuYmYiOjE3MDg5NDI0MTcsInNjb3BlIjpbImNsaWVudC5jcmVhdGUiXSwiaXNzIjoiaHR0cDovLzEyNy4wLjAuMTo2MDA0IiwiZXhwIjoxNzA4OTU2ODE3LCJpYXQiOjE3MDg5NDI0MTcsImp0aSI6ImZmZGQ3NDVkLWRjMGQtNDk3OC1iNGJmLWQxNWM4NTM5ZmNkNyJ9.nGRxgbChiPnejT2no3yM_rJ3sWxdmf4M0QSTTeJCkAgA-AO8uCTz7QAx4mtZT3gT5kfzDTcIzugrXy_mNYJKsuEv_FFo-FS-Wn-YrnRjfeikaK23jKpF-UZzVPWE0RdPWLrvi2hUkTjH6XQsku1ejOf3JTo-5ylspjT1ZleSbewBURnNAYuzyKznwUKfBx0DKVNQT1e9suReh1ou9zA2PffaCla7oKfCtTiQpOq12dY1dgyfdhwkVgKfIuTjNe8WNVSbvPtL26r-geR94hfWSwU_kUs9r3K6QrrVOdemGJmAF54r9yPDptRXksFrBgJVy_mzSZICAFoOxnp2LunhGw", StandardCharsets.UTF_8));
-            stringBuilder.append("&");
-
-
-
-            stringBuilder.append("code=");
-            stringBuilder.append(URLEncoder.encode(code, StandardCharsets.UTF_8));
-            stringBuilder.append("&");
-            stringBuilder.append("redirect_uri=");
-            stringBuilder.append(URLEncoder.encode(redirect_uri, StandardCharsets.UTF_8));
-
-            stringBuilder.append("\"");
+            stringBuilder.append(URLEncoder.encode(clientSecret_or_clientAssertion, StandardCharsets.UTF_8));
         }
-
+        stringBuilder.append("\"");
         stringBuilder.append("}).then(res=>res.json()).then(json=>console.log(json));");
         return stringBuilder.toString();
     }
-
 
     /**
      * 请求端点：/oauth2/introspect <br/>
@@ -378,43 +353,6 @@ public class EndpointUtil {
      */
     public static String getOpenidLogoutUrl(String token) {
         return null;
-    }
-
-    public static String usingJWTsForClientAuthentication(String code, String client_id, String jwt) {
-        StringBuilder stringBuilder = new StringBuilder();
-        stringBuilder.append("fetch(\"http://127.0.0.1:6004/oauth2/token\", {");
-        stringBuilder.append("\"headers\": {");
-        stringBuilder.append("\"content-type\": \"application/x-www-form-urlencoded; charset=UTF-8\",");
-        stringBuilder.append("},");
-        stringBuilder.append("\"method\": \"POST\",");
-        stringBuilder.append("\"body\":\"");
-
-        stringBuilder.append("grant_type=");
-        stringBuilder.append(URLEncoder.encode("authorization_code", StandardCharsets.UTF_8));
-        stringBuilder.append("&");
-
-        stringBuilder.append("code=");
-        stringBuilder.append(URLEncoder.encode(code, StandardCharsets.UTF_8));
-        stringBuilder.append("&");
-
-        stringBuilder.append("redirect_uri=");
-        stringBuilder.append(URLEncoder.encode(redirect_uri, StandardCharsets.UTF_8));
-        stringBuilder.append("&");
-
-        stringBuilder.append("client_id=");
-        stringBuilder.append(URLEncoder.encode(client_id, StandardCharsets.UTF_8));
-        stringBuilder.append("&");
-
-        stringBuilder.append("client_assertion_type=");
-        stringBuilder.append(URLEncoder.encode("urn:ietf:params:oauth:client-assertion-type:jwt-bearer", StandardCharsets.UTF_8));
-        stringBuilder.append("&");
-
-        stringBuilder.append("client_assertion=");
-        stringBuilder.append(URLEncoder.encode(jwt, StandardCharsets.UTF_8));
-
-        stringBuilder.append("\"");
-        stringBuilder.append("}).then(res=>res.json()).then(json=>console.log(json));");
-        return stringBuilder.toString();
     }
 
     public static String usingJWTsAsAuthorizationGrants(String jwt) {

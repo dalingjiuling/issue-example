@@ -153,15 +153,12 @@ public class SecurityConfig {
                 .authorizationGrantType(AuthorizationGrantType.REFRESH_TOKEN)
                 // 返回授权码的回调客户端地址
                 .redirectUri("http://127.0.0.1:8089/client/oauth2/code")
-                .postLogoutRedirectUri("http://127.0.0.1:6004/")
                 .scope("client.create")
                 .scope(OidcScopes.OPENID)
                 .scope(OidcScopes.PROFILE)
                 .clientSettings(ClientSettings.builder().requireAuthorizationConsent(true)
                         // 包含HmacSHA256、HmacSHA384、HmacSHA512
                         .tokenEndpointAuthenticationSigningAlgorithm(MacAlgorithm.HS256)
-                        // 配置公钥获取地址，需要获取公钥集来验证jwt（验签）
-                        .jwkSetUrl("http://127.0.0.1:8089/client/jwks")
                         .build())
                 .tokenSettings(TokenSettings.builder()
                         .accessTokenTimeToLive(Duration.ofHours(4l)).build())

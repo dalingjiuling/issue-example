@@ -16,8 +16,6 @@ import com.nimbusds.jose.jwk.source.ImmutableJWKSet;
 import com.nimbusds.jose.jwk.source.JWKSource;
 import com.nimbusds.jose.proc.SecurityContext;
 
-import org.issue.example.spring.endpoint.converter.JwtBearerAuthenticationConverter;
-import org.issue.example.spring.endpoint.converter.JwtBearerAuthenticationProvider;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.core.annotation.Order;
@@ -67,10 +65,6 @@ public class SecurityConfig {
                         .clientRegistrationEndpoint(Customizer.withDefaults())
                         .userInfoEndpoint(Customizer.withDefaults())
                         .logoutEndpoint(Customizer.withDefaults())
-                )
-                .tokenEndpoint(tokenEndpointCustomizer -> tokenEndpointCustomizer
-                                .accessTokenRequestConverter(new JwtBearerAuthenticationConverter(http))
-                                .authenticationProvider(new JwtBearerAuthenticationProvider())
                 );
         http
                 // Redirect to the login page when not authenticated from the

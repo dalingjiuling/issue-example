@@ -2,6 +2,7 @@ package org.issue.example.spring.grants.converter;
 
 import jakarta.servlet.http.HttpServletRequest;
 import org.springframework.security.core.Authentication;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.oauth2.core.*;
 import org.springframework.security.oauth2.core.endpoint.OAuth2ParameterNames;
 import org.springframework.security.web.authentication.AuthenticationConverter;
@@ -13,6 +14,7 @@ import java.util.*;
 
 /**
  * 自定义”urn:ietf:params:oauth:grant-type:jwt-bearer“转换器
+ * <a href="https://datatracker.ietf.org/doc/html/rfc7523#section-2.2">参考<a/>
  */
 public class JwtBearerAuthenticationConverter implements AuthenticationConverter {
 
@@ -35,25 +37,19 @@ public class JwtBearerAuthenticationConverter implements AuthenticationConverter
             return null;
         }
 
+        Authentication clientPrincipal = SecurityContextHolder.getContext().getAuthentication();
+
         // assertion (REQUIRED)
         String assertion = parameters.getFirst(OAuth2ParameterNames.ASSERTION);
         if (parameters.get(OAuth2ParameterNames.ASSERTION).size() != 1) {
             throw new OAuth2AuthenticationException(OAuth2ErrorCodes.INVALID_REQUEST);
         }
 
-        // client_id (OPTIONAL as per specification but REQUIRED by this implementation)
-        String clientId = parameters.getFirst(OAuth2ParameterNames.CLIENT_ID);
-        if (!StringUtils.hasText(clientId) ||
-                parameters.get(OAuth2ParameterNames.CLIENT_ID).size() != 1) {
-            throw new OAuth2AuthenticationException(OAuth2ErrorCodes.INVALID_REQUEST);
-        }
-
         Map<String, Object> additionalParameters = getParametersIfMatchesAuthorizationCodeGrantRequest(parameters,
                 OAuth2ParameterNames.GRANT_TYPE,
-                OAuth2ParameterNames.ASSERTION,
-                OAuth2ParameterNames.CLIENT_ID);
+                OAuth2ParameterNames.ASSERTION);
 
-        return new JwtBearerAuthenticationToken(clientId, AuthorizationGrantType.JWT_BEARER,
+        return new JwtBearerAuthenticationToken(clientPrincipal,
                 assertion, additionalParameters);
     }
 

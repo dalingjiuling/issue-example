@@ -13,14 +13,15 @@ import java.util.List;
 public class JwtUtilTest {
 
     private static final String JWKS_URL = "http://127.0.0.1:8089/client/jwks";
+    private static final String PORT = "6004";
 
     private static JWTClaimsSet getJWTClaimsSet(String clientId) {
 
         List<String> aud = new ArrayList<>();
-        aud.add("http://127.0.0.1:6004");
-        aud.add("http://127.0.0.1:6004/oauth2/token");
-        aud.add("http://127.0.0.1:6004/oauth2/introspect");
-        aud.add("http://127.0.0.1:6004/oauth2/revoke");
+        aud.add("http://127.0.0.1:" + PORT);
+        aud.add("http://127.0.0.1:" + PORT + "/oauth2/token");
+        aud.add("http://127.0.0.1:" + PORT + "/oauth2/introspect");
+        aud.add("http://127.0.0.1:" + PORT + "/oauth2/revoke");
 
         // 前四个属性是必须的（iss、sub、aud、exp），参考JwtClientAssertionDecoderFactory#defaultJwtValidatorFactory
         JWTClaimsSet claimsSet = new JWTClaimsSet.Builder()

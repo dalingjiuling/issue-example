@@ -8,35 +8,42 @@ import org.springframework.security.core.Authentication;
 import org.springframework.security.core.AuthenticationException;
 import org.springframework.security.oauth2.core.*;
 import org.springframework.security.oauth2.core.endpoint.OAuth2ParameterNames;
-import org.springframework.security.oauth2.jose.jws.SignatureAlgorithm;
 import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.security.oauth2.jwt.JwtDecoder;
 import org.springframework.security.oauth2.jwt.JwtDecoderFactory;
 import org.springframework.security.oauth2.jwt.JwtException;
+import org.springframework.security.oauth2.server.authorization.OAuth2Authorization;
 import org.springframework.security.oauth2.server.authorization.OAuth2AuthorizationService;
+import org.springframework.security.oauth2.server.authorization.OAuth2TokenType;
 import org.springframework.security.oauth2.server.authorization.authentication.JwtClientAssertionDecoderFactory;
+import org.springframework.security.oauth2.server.authorization.authentication.OAuth2AccessTokenAuthenticationToken;
 import org.springframework.security.oauth2.server.authorization.authentication.OAuth2ClientAuthenticationToken;
 import org.springframework.security.oauth2.server.authorization.client.RegisteredClient;
-import org.springframework.security.oauth2.server.authorization.client.RegisteredClientRepository;
+import org.springframework.security.oauth2.server.authorization.context.AuthorizationServerContextHolder;
+import org.springframework.security.oauth2.server.authorization.token.DefaultOAuth2TokenContext;
+import org.springframework.security.oauth2.server.authorization.token.OAuth2TokenContext;
+import org.springframework.security.oauth2.server.authorization.token.OAuth2TokenGenerator;
 import org.springframework.util.CollectionUtils;
-;
+
 import java.time.Instant;
 import java.util.*;
+import java.util.stream.Collectors;
 
 /**
  * 自定义”urn:ietf:params:oauth:grant-type:jwt-bearer“Provider
+ * <a href="https://datatracker.ietf.org/doc/html/rfc7523#section-2.2">参考<a/>
  */
 public class JwtBearerAuthenticationProvider implements AuthenticationProvider {
     private final Log logger = LogFactory.getLog(getClass());
     private static final String ERROR_URI = "https://datatracker.ietf.org/doc/html/rfc7523#section-2.1";
-    RegisteredClientRepository registeredClientRepository;
     private JwtDecoderFactory<RegisteredClient> jwtDecoderFactory;
     OAuth2AuthorizationService authorizationService;
+    private final OAuth2TokenGenerator<? extends OAuth2Token> tokenGenerator;
 
     public JwtBearerAuthenticationProvider(HttpSecurity httpSecurity) {
-        this.registeredClientRepository = httpSecurity.getSharedObject(RegisteredClientRepository.class);
         this.authorizationService = httpSecurity.getSharedObject(OAuth2AuthorizationService.class);
         this.jwtDecoderFactory = new JwtClientAssertionDecoderFactory();
+        this.tokenGenerator = httpSecurity.getSharedObject(OAuth2TokenGenerator.class);
     }
 
     @Override
@@ -45,22 +52,17 @@ public class JwtBearerAuthenticationProvider implements AuthenticationProvider {
         JwtBearerAuthenticationToken authenticationToken =
                 (JwtBearerAuthenticationToken) authentication;
 
-        if (!AuthorizationGrantType.JWT_BEARER.equals(authenticationToken.getAuthorizationGrantType())) {
-            return null;
-        }
+        OAuth2ClientAuthenticationToken clientPrincipal =
+                getAuthenticatedClientElseThrowInvalidClient(authenticationToken);
 
-        String clientId = authenticationToken.getPrincipal().toString();
-        RegisteredClient registeredClient = this.registeredClientRepository.findByClientId(clientId);
-        if (registeredClient == null) {
-            throwInvalidClient(OAuth2ParameterNames.CLIENT_ID);
-        }
+        RegisteredClient registeredClient = clientPrincipal.getRegisteredClient();
 
         if (this.logger.isTraceEnabled()) {
             this.logger.trace("Retrieved registered client");
         }
 
-        if (authenticationToken.getCredentials() == null) {
-            throwInvalidClient("credentials");
+        if (!registeredClient.getAuthorizationGrantTypes().contains(AuthorizationGrantType.JWT_BEARER)) {
+            throw new OAuth2AuthenticationException(OAuth2ErrorCodes.UNAUTHORIZED_CLIENT);
         }
 
         Jwt jwtAssertion = null;
@@ -78,50 +80,79 @@ public class JwtBearerAuthenticationProvider implements AuthenticationProvider {
         // 检验assertion的生命周期是否超时
         Instant expiresAt = jwtAssertion.getExpiresAt();
         Instant now = Instant.now();
-        if (!expiresAt.isBefore(now)) {
+        if (expiresAt.isBefore(now)) {
             // assertion过期了
             this.logger.trace("Validated assertion timeout");
             throwInvalidClient(OAuth2ParameterNames.ASSERTION);
         }
 
-        String[] scopes = jwtAssertion.getClaim(OAuth2ParameterNames.SCOPE);
-        List<String> requestedScopes = new ArrayList<>();
+        List<String> scopes = jwtAssertion.getClaim(OAuth2ParameterNames.SCOPE);
+        Set<String> authorizedScopes = Collections.emptySet();
         if (null != scopes) {
-            requestedScopes.addAll(Arrays.asList(scopes));
+            authorizedScopes = scopes.stream().collect(Collectors.toSet());
         }
 
         // assertion的scope范围必须等于或小于已注册客户端信息的scope
-        if (!CollectionUtils.isEmpty(requestedScopes)) {
-            for (String requestedScope : requestedScopes) {
+        if (!CollectionUtils.isEmpty(authorizedScopes)) {
+            for (String requestedScope : authorizedScopes) {
                 if (!registeredClient.getScopes().contains(requestedScope)) {
                     throwInvalidClient(OAuth2ParameterNames.SCOPE);
                 }
             }
         }
 
-        // 参考，DelegatingOAuth2TokenGenerator如何生成access_token
-        // TODO 需要把生成access_token放到内存或数据库等存储库中
+        // @formatter:off
+        OAuth2TokenContext tokenContext = DefaultOAuth2TokenContext.builder()
+                .registeredClient(registeredClient)
+                .principal(clientPrincipal)
+                .authorizationServerContext(AuthorizationServerContextHolder.getContext())
+                .authorizedScopes(authorizedScopes)
+                .tokenType(OAuth2TokenType.ACCESS_TOKEN)
+                .authorizationGrantType(AuthorizationGrantType.JWT_BEARER)
+                .authorizationGrant(authenticationToken)
+                .build();
+        // @formatter:on
 
+        OAuth2Token generatedAccessToken = this.tokenGenerator.generate(tokenContext);
+        if (generatedAccessToken == null) {
+            OAuth2Error error = new OAuth2Error(OAuth2ErrorCodes.SERVER_ERROR,
+                    "The token generator failed to generate the access token.", ERROR_URI);
+            throw new OAuth2AuthenticationException(error);
+        }
 
-        // 需要根据assertion生成access_token，或者刷新access_token
-        Jwt assertion = (Jwt) authenticationToken.getCredentials();
+        if (this.logger.isTraceEnabled()) {
+            this.logger.trace("Generated access token");
+        }
 
-        String access_token = assertion.getTokenValue();
-        Instant expires_in = assertion.getExpiresAt();
-        String token_type = "Bearer";
+        // 授权服务器不应发布生存期超过assertion有效期的访问令牌（access_token）
+        OAuth2AccessToken accessToken = new OAuth2AccessToken(OAuth2AccessToken.TokenType.BEARER,
+                generatedAccessToken.getTokenValue(), generatedAccessToken.getIssuedAt(),
+                expiresAt, tokenContext.getAuthorizedScopes());
 
-        // token返回：参考https://datatracker.ietf.org/doc/html/rfc6749#section-4.4.3
-        Map<String, Object> map = new HashMap<>();
-        map.put("access_token", access_token);
-        map.put("token_type", token_type);
-        map.put("expires_in", expires_in);
+        // @formatter:off
+        OAuth2Authorization.Builder authorizationBuilder = OAuth2Authorization.withRegisteredClient(registeredClient)
+                .principalName(clientPrincipal.getName())
+                .authorizationGrantType(AuthorizationGrantType.JWT_BEARER)
+                .authorizedScopes(authorizedScopes);
+        // @formatter:on
+        if (generatedAccessToken instanceof ClaimAccessor) {
+            authorizationBuilder.token(accessToken, (metadata) ->
+                    metadata.put(OAuth2Authorization.Token.CLAIMS_METADATA_NAME, ((ClaimAccessor) generatedAccessToken).getClaims()));
+        } else {
+            authorizationBuilder.accessToken(accessToken);
+        }
 
-        ClientAuthenticationMethod clientAuthenticationMethod =
-                registeredClient.getClientSettings().getTokenEndpointAuthenticationSigningAlgorithm() instanceof SignatureAlgorithm ?
-                        ClientAuthenticationMethod.PRIVATE_KEY_JWT :
-                        ClientAuthenticationMethod.CLIENT_SECRET_JWT;
+        OAuth2Authorization authorization = authorizationBuilder.build();
 
-        return new OAuth2ClientAuthenticationToken(registeredClient, clientAuthenticationMethod, assertion);
+        this.authorizationService.save(authorization);
+
+        if (this.logger.isTraceEnabled()) {
+            this.logger.trace("Saved authorization");
+            // This log is kept separate for consistency with other providers
+            this.logger.trace("Authenticated token request");
+        }
+
+        return new OAuth2AccessTokenAuthenticationToken(registeredClient, clientPrincipal, accessToken);
     }
 
     @Override
@@ -129,15 +160,15 @@ public class JwtBearerAuthenticationProvider implements AuthenticationProvider {
         return JwtBearerAuthenticationToken.class.isAssignableFrom(authentication);
     }
 
-    /**
-     * 生成 access_token，规则：授权服务器不应发布生存期超过assertion有效期的访问令牌（access_token）。这通常意味着不会在响应assertion授权请求时发布刷新令牌（refresh_token），而发布访问令牌的生命周期将相当短。客户端可以通过使用相同的assertion（如果仍然有效）或使用新的assertion请求新的访问令牌来刷新过期的访问令牌。
-     *
-     * @param registeredClient 客户端信息
-     * @param expiresAt        assertion过期时间
-     */
-    private static void generate(RegisteredClient registeredClient, Instant expiresAt) {
-
-
+    static OAuth2ClientAuthenticationToken getAuthenticatedClientElseThrowInvalidClient(Authentication authentication) {
+        OAuth2ClientAuthenticationToken clientPrincipal = null;
+        if (OAuth2ClientAuthenticationToken.class.isAssignableFrom(authentication.getPrincipal().getClass())) {
+            clientPrincipal = (OAuth2ClientAuthenticationToken) authentication.getPrincipal();
+        }
+        if (clientPrincipal != null && clientPrincipal.isAuthenticated()) {
+            return clientPrincipal;
+        }
+        throw new OAuth2AuthenticationException(OAuth2ErrorCodes.INVALID_CLIENT);
     }
 
     private static void throwInvalidClient(String parameterName) {

@@ -1,10 +1,10 @@
 package org.issue.example.spring.grants.converter;
 
-import org.springframework.security.authentication.AbstractAuthenticationToken;
+import org.springframework.lang.Nullable;
+import org.springframework.security.core.Authentication;
 import org.springframework.security.core.Transient;
 import org.springframework.security.oauth2.core.AuthorizationGrantType;
-import org.springframework.security.oauth2.server.authorization.util.SpringAuthorizationServerVersion;
-import org.springframework.util.Assert;
+import org.springframework.security.oauth2.server.authorization.authentication.OAuth2AuthorizationGrantAuthenticationToken;
 
 import java.util.*;
 
@@ -12,38 +12,19 @@ import java.util.*;
  * 自定义”urn:ietf:params:oauth:grant-type:jwt-bearer“Token
  */
 @Transient
-public class JwtBearerAuthenticationToken extends AbstractAuthenticationToken {
+public class JwtBearerAuthenticationToken extends OAuth2AuthorizationGrantAuthenticationToken {
 
-    private static final long serialVersionUID = SpringAuthorizationServerVersion.SERIAL_VERSION_UID;
-    private final Object credentials;
-    private final Map<String, Object> additionalParameters;
-    private final String clientId;
-    private final AuthorizationGrantType authorizationGrantType;
+    private final String assertion;
 
-    public JwtBearerAuthenticationToken(String clientId,
-                                        AuthorizationGrantType authorizationGrantType,
-                                        Object credentials,
-                                        Map<String, Object> additionalParameters) {
-        super(Collections.emptyList());
-        Assert.notNull(authorizationGrantType, "authorizationGrantType cannot be null");
-        this.clientId = clientId;
-        this.authorizationGrantType = authorizationGrantType;
-        this.credentials = credentials;
-        this.additionalParameters = Collections.unmodifiableMap(
-                additionalParameters != null ? additionalParameters : Collections.emptyMap());
+
+    public JwtBearerAuthenticationToken(Authentication clientPrincipal,
+                                        @Nullable String assertion, @Nullable Map<String, Object> additionalParameters) {
+        super(AuthorizationGrantType.JWT_BEARER, clientPrincipal, additionalParameters);
+        this.assertion = assertion;
     }
 
     @Override
     public Object getCredentials() {
-        return this.credentials;
-    }
-
-    @Override
-    public Object getPrincipal() {
-        return this.clientId;
-    }
-
-    public AuthorizationGrantType getAuthorizationGrantType() {
-        return authorizationGrantType;
+        return this.assertion;
     }
 }

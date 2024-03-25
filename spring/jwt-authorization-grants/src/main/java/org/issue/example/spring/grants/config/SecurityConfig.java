@@ -21,7 +21,6 @@ import org.springframework.security.core.userdetails.UserDetailsService;
 import org.springframework.security.oauth2.core.AuthorizationGrantType;
 import org.springframework.security.oauth2.core.ClientAuthenticationMethod;
 import org.springframework.security.oauth2.core.oidc.OidcScopes;
-import org.springframework.security.oauth2.jose.jws.MacAlgorithm;
 import org.springframework.security.oauth2.jose.jws.SignatureAlgorithm;
 import org.springframework.security.oauth2.jwt.JwtDecoder;
 import org.springframework.security.oauth2.server.authorization.client.InMemoryRegisteredClientRepository;
@@ -63,10 +62,12 @@ public class SecurityConfig {
                         .clientRegistrationEndpoint(Customizer.withDefaults())
                         .userInfoEndpoint(Customizer.withDefaults())
                         .logoutEndpoint(Customizer.withDefaults())
-                ).clientAuthentication(clientAuthenticationCustomizer -> clientAuthenticationCustomizer
-                        .authenticationConverter(new JwtBearerAuthenticationConverter())
-                        .authenticationProvider(new JwtBearerAuthenticationProvider(http))
-                );
+                ).tokenEndpoint(oAuth2TokenEndpointConfigurer -> oAuth2TokenEndpointConfigurer
+                        .accessTokenRequestConverter(new JwtBearerAuthenticationConverter())
+                        .authenticationProviders(authenticationProvidersConsumer ->
+                                authenticationProvidersConsumer.add(new JwtBearerAuthenticationProvider(http)))
+                )
+        ;
         http
                 // Redirect to the login page when not authenticated from the
                 // authorization endpoint
@@ -121,9 +122,10 @@ public class SecurityConfig {
                 .clientAuthenticationMethod(ClientAuthenticationMethod.CLIENT_SECRET_JWT)
                 .authorizationGrantType(AuthorizationGrantType.AUTHORIZATION_CODE)
                 .authorizationGrantType(AuthorizationGrantType.REFRESH_TOKEN)
+                .authorizationGrantType(AuthorizationGrantType.CLIENT_CREDENTIALS)
+                .authorizationGrantType(AuthorizationGrantType.JWT_BEARER)
                 // 返回授权码的回调客户端地址
                 .redirectUri("http://127.0.0.1:8089/client/oauth2/code")
-                .postLogoutRedirectUri("http://127.0.0.1:6004/")
                 .scope("client.create")
                 .scope(OidcScopes.OPENID)
                 .scope(OidcScopes.PROFILE)
@@ -137,31 +139,8 @@ public class SecurityConfig {
                         .accessTokenTimeToLive(Duration.ofHours(4l)).build())
                 .build();
 
-        RegisteredClient oidcClientTwo = RegisteredClient.withId(UUID.randomUUID().toString())
-                .clientId("oidc-client-two")
-                .clientSecret("b06c75b78d1701ff470119a4114f8b90")
-                .clientAuthenticationMethod(ClientAuthenticationMethod.CLIENT_SECRET_BASIC)
-                .clientAuthenticationMethod(ClientAuthenticationMethod.CLIENT_SECRET_POST)
-                .clientAuthenticationMethod(ClientAuthenticationMethod.PRIVATE_KEY_JWT)
-                .clientAuthenticationMethod(ClientAuthenticationMethod.CLIENT_SECRET_JWT)
-                .authorizationGrantType(AuthorizationGrantType.AUTHORIZATION_CODE)
-                .authorizationGrantType(AuthorizationGrantType.REFRESH_TOKEN)
-                // 返回授权码的回调客户端地址
-                .redirectUri("http://127.0.0.1:8089/client/oauth2/code")
-                .scope("client.create")
-                .scope(OidcScopes.OPENID)
-                .scope(OidcScopes.PROFILE)
-                .clientSettings(ClientSettings.builder().requireAuthorizationConsent(true)
-                        // 包含HmacSHA256、HmacSHA384、HmacSHA512
-                        .tokenEndpointAuthenticationSigningAlgorithm(MacAlgorithm.HS256)
-                        .build())
-                .tokenSettings(TokenSettings.builder()
-                        .accessTokenTimeToLive(Duration.ofHours(4l)).build())
-                .build();
-
-        List<RegisteredClient> registeredClientList =new ArrayList<>();
+        List<RegisteredClient> registeredClientList = new ArrayList<>();
         registeredClientList.add(oidcClient);
-        registeredClientList.add(oidcClientTwo);
         return new InMemoryRegisteredClientRepository(registeredClientList);
     }
 

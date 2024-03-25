@@ -120,6 +120,7 @@ public class SecurityConfig {
                 .clientAuthenticationMethod(ClientAuthenticationMethod.CLIENT_SECRET_JWT)
                 .authorizationGrantType(AuthorizationGrantType.AUTHORIZATION_CODE)
                 .authorizationGrantType(AuthorizationGrantType.REFRESH_TOKEN)
+                .authorizationGrantType(AuthorizationGrantType.CLIENT_CREDENTIALS)
                 // 返回授权码的回调客户端地址
                 .redirectUri("http://127.0.0.1:8089/client/oauth2/code")
                 .postLogoutRedirectUri("http://127.0.0.1:6004/")

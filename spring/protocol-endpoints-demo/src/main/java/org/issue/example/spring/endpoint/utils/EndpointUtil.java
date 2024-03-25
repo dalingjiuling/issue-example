@@ -4,6 +4,7 @@ import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
 import org.apache.commons.codec.binary.Base64;
+import org.springframework.security.oauth2.core.AuthorizationGrantType;
 import org.springframework.security.oauth2.core.ClientAuthenticationMethod;
 import org.springframework.security.oauth2.core.oidc.OidcScopes;
 import org.springframework.security.oauth2.server.authorization.oidc.OidcClientRegistration;
@@ -353,5 +354,46 @@ public class EndpointUtil {
      */
     public static String getOpenidLogoutUrl(String token) {
         return null;
+    }
+
+    /**
+     * authorizationGrantType 操作
+     * 参考：
+     * {@link org.springframework.security.oauth2.server.authorization.web.OAuth2ClientAuthenticationFilter}
+     * {@link org.springframework.security.oauth2.server.authorization.web.authentication.OAuth2ClientCredentialsAuthenticationConverter}
+     * {@link org.springframework.security.oauth2.server.authorization.authentication.OAuth2ClientCredentialsAuthenticationProvider}
+     *
+     * @param grantType 授予类型
+     * @return 请求数据
+     */
+    public static String authorizationGrantType(String client_id, String clientSecret, AuthorizationGrantType grantType) {
+        StringBuilder stringBuilder = new StringBuilder();
+
+        stringBuilder.append("fetch(\"http://127.0.0.1:6004/oauth2/token\", {");
+        stringBuilder.append("\"headers\": {");
+        stringBuilder.append("\"content-type\": \"application/x-www-form-urlencoded; charset=UTF-8\",");
+        stringBuilder.append("},");
+        stringBuilder.append("\"method\": \"POST\",");
+        stringBuilder.append("\"body\":\"");
+
+        if (AuthorizationGrantType.CLIENT_CREDENTIALS.equals(grantType)) {
+
+            stringBuilder.append("client_id=");
+            stringBuilder.append(URLEncoder.encode(client_id, StandardCharsets.UTF_8));
+            stringBuilder.append("&");
+
+            stringBuilder.append("client_secret=");
+            stringBuilder.append(URLEncoder.encode(clientSecret, StandardCharsets.UTF_8));
+            stringBuilder.append("&");
+
+            stringBuilder.append("grant_type=");
+            stringBuilder.append(URLEncoder.encode(grantType.getValue(), StandardCharsets.UTF_8));
+            stringBuilder.append("&");
+
+            stringBuilder.append("scope=");
+            stringBuilder.append(URLEncoder.encode("openid profile client.create", StandardCharsets.UTF_8));
+        }
+        stringBuilder.append("\"}).then(res=>res.json()).then(json=>console.log(json));");
+        return stringBuilder.toString();
     }
 }

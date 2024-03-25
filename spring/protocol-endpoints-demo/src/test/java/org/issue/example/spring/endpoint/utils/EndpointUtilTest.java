@@ -3,6 +3,7 @@ package org.issue.example.spring.endpoint.utils;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import org.apache.commons.codec.binary.Base64;
 import org.junit.jupiter.api.Test;
+import org.springframework.security.oauth2.core.AuthorizationGrantType;
 import org.springframework.security.oauth2.core.ClientAuthenticationMethod;
 
 import java.nio.charset.StandardCharsets;
@@ -91,4 +92,11 @@ public class EndpointUtilTest {
         System.out.println(EndpointUtil.getAccessTokenUrl("oidc-client-two", code, HS256_JWT,
                 ClientAuthenticationMethod.CLIENT_SECRET_JWT));
     }
+
+    @Test
+    public void authorizationGrantTypeTest() {
+        System.out.println(EndpointUtil.authorizationGrantType("oidc-client", "secret",
+                AuthorizationGrantType.CLIENT_CREDENTIALS));
+    }
+
 }

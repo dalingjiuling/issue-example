@@ -20,6 +20,7 @@
         <module>protocol-endpoints-demo</module>
         <module>client-endpoints</module>
         <module>jwt-authorization-grants</module>
+        <module>granted-authority</module>
     </modules>
 
     <properties>
